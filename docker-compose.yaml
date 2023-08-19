@@ -1,0 +1,70 @@
+version: '3.9'
+
+services:
+  # основное приложение, содержит фронт-енд + бекенд
+  cry-go:
+    image: hardstylez72/cry-go:latest
+    restart: always
+    ports:
+      - 4321:4321
+    environment:
+      PROXY_PORT: :4321
+      ENV: prod
+      LAZANYA: 241c!@\#\$h6
+      TELEGRAM_TOKEN: '' # создай бота и суй сюда token или не заполняй и бота не будет
+      ADMIN_EMAIL: standalone@standalone
+      MIGRATIONS_DIR: '/migrations'
+      # зависимые сервисы
+      SNAPSHOT_ORG_HOST: http://snapshot:7777
+      PAY_SERVICE_GRPC_ADDR: cry-pay:91
+      HALPER_HOST: http://halper:7272
+      POSTGRES_CONN: host=postgres port=7771 user=postgres password=6655 dbname=cry sslmode=disable
+      STANDALONE: 'true'
+    depends_on:
+      - postgres
+      - snapshot
+      - cry-pay
+      - halper
+
+  # снапшот сервис, имеет особенные зависимости, живет отдельно
+  snapshot:
+    image: hardstylez72/snapshot
+    restart: always
+    environment:
+      PORT: 7777
+
+  #отвечает за статистику по выполненным задачам
+  cry-pay:
+    image: hardstylez72/cry-pay
+    restart: always
+    environment:
+      ENV: prod
+      POSTGRES_CONN: host=postgres port=7771 user=postgres password=6655 dbname=pay sslmode=disable
+      GRPC_ADDR: ':91'
+      MIGRATIONS_DIR: /migrations
+      STANDALONE: 'true'
+    depends_on:
+      - postgres
+
+  # все что сложно делать на go, сделано здесь на nodejs
+  halper:
+    image: hardstylez72/halper
+    restart: always
+    environment:
+      PORT: 7272
+
+  # база данных где все хранится
+  postgres:
+    image: postgres:15.1
+    restart: always
+    ports:
+      - 7771:7771
+    environment:
+      POSTGRES_PASSWORD: 6655
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      PGPORT: 7771
+    volumes:
+      - ./database:/var/lib/postgresql/data
+      - ./dbinit.sql:/docker-entrypoint-initdb.d/dbinit.sql
+
